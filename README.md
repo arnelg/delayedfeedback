@@ -15,9 +15,9 @@ Example usage:
 
 In python prompt:
 
->>>> from qutip import *
->>>> from pylab import *
->>>> import example
->>>> times,sol = example.run()
->>>> plot(t,expect(sol,sigmap()*sigmam())
->>>> show()
+    from qutip import *
+    from pylab import *
+    import example
+    times,sol = example.run()
+    plot(t,expect(sol,sigmap()*sigmam())
+    show()
