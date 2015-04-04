@@ -19,5 +19,5 @@ In python prompt:
     from pylab import *
     import example
     times,sol = example.run()
-    plot(t,expect(sol,sigmap()*sigmam())
+    plot(times,expect(sol,sigmap()*sigmam())
     show()
