@@ -1,7 +1,7 @@
 This code was used to generate the results in
 arXiv:1502.06959 - Time-delayed quantum feedback control.
 
-Requirement: QuTiP and all it's requirements (see qutip.org).
+Requirements: QuTiP and all it's requirements (see qutip.org).
 
 Explanation of files in repository:
 
