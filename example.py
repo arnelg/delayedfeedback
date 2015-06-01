@@ -1,3 +1,21 @@
+"""
+Example file for time-delayed feedback simulation.
+This example is a driven two-level atom, the example used in
+arXiv:1502.06959.
+
+Example usage:
+
+In python prompt:
+
+>>>> from qutip import *
+>>>> from pylab import *
+>>>> import example
+>>>> times,sol = example.run()
+>>>> plot(t,expect(sol,sigmap()*sigmam())
+>>>> show()
+
+"""
+
 import numpy as np
 import scipy as sp
 
@@ -34,7 +52,7 @@ def run(rho0=rho0,tau=tau,tlist=tlist):
     opts.nsteps = 1e7
     sol = np.array([rho0]*len(tlist))
     for i,t in enumerate(tlist):
-        sol[i] = cascade.rhot(rho0,t,tau,H_S,L1,L2,Id,options=opts)
+        sol[i] = cascade.rhot(rho0,t,tau,H_S,L1,L2,Id,eps=0.,options=opts)
     return tlist,sol
 
 def run_nofb(rho0=rho0,tlist=tlist):

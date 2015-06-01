@@ -112,21 +112,8 @@ class TensorQobj(qt.Qobj):
         return out2.reshuffle()
 
 
-def localop(op,l,k,dim):
-    """
-    Create a local operator on the l'th system by tensoring
-    with identity operators on all the other k-1 systems
-    """
-    h = op
-    id = qt.qeye(dim)
-    for i in range(1,l):
-        h = qt.tensor(h,id)
-    for i in range(l+1,k+1):
-        h = qt.tensor(id,h)
-    return h
 
-
-def generator(k,H,L1,L2):
+def generator(k,H,L1,L2,eps=0.0):
     """
     Create the generator for the cascaded chain of k system copies
     """
@@ -153,8 +140,7 @@ def generator(k,H,L1,L2):
         L2list.append(l2)
     # create Lindbladian
     L = qt.Qobj()
-    #H0 = 0.5*(Hlist[0]+eps*L2list[0]+np.conj(eps)*L2list[0].dag())
-    H0 = 0.5*Hlist[0]
+    H0 = 0.5*(Hlist[0]+eps*L2list[0]+np.conj(eps)*L2list[0].dag())
     L0 = L2list[0]
     #L0 = 0.*L2list[0]
     L += qt.liouvillian(H0,[L0])
@@ -162,38 +148,32 @@ def generator(k,H,L1,L2):
     for l in range(k-1):
         E0 = qt.composite(Id,E0)
         Hl = 0.5*(Hlist[l]+Hlist[l+1]+1j*(L1list[l].dag()*L2list[l+1] 
-                                          -L2list[l+1].dag()*L1list[l]))
+                                          -L2list[l+1].dag()*L1list[l])
+                  +eps*L1list[l]+np.conj(eps)*L1list[l].dag()
+                  +eps*L2list[l+1]+np.conj(eps)*L2list[l+1].dag()
+                 )
         Ll = L1list[l] + L2list[l+1]
         L += qt.liouvillian(Hl,[Ll])
     Hk = 0.5*Hlist[k-1]
+    Hk = 0.5*(Hlist[k-1]+eps*L1list[k-1]+np.conj(eps)*L1list[k-1].dag())
     Lk = L1list[k-1]
     L += qt.liouvillian(Hk,[Lk])
     E0.dims = L.dims
-    # return generator, identity superop E0
     return L,E0
 
 
-def integrate(L,E0,ti,tf,Lfunc=None,opt=qt.Options()):
+def integrate(L,E0,ti,tf,opt=qt.Options()):
     """
     Basic ode integrator
     """
-    def _rhs(t,y,L):
-        ym = y.reshape(L.shape)
-        return (L*ym).flatten()
-    def _rhs_td(t,y,L,Lfunc):
-        # Lfunc is time-dependent part of L
-        L = L + Lfunc(t).data
-        ym = y.reshape(L.shape)
-        return (L*ym).flatten()
+    def _rhs(t,y,arg1):
+        ym = y.reshape(arg1.shape)
+        return sp.dot(arg1,ym).flatten()
 
     from qutip.superoperator import vec2mat
-    if Lfunc is None:
-        r = sp.integrate.ode(_rhs)
-        r.set_f_params(L.data)
-    else:
-        r = sp.integrate.ode(_rhs_td)
-        r.set_f_params(L.data,Lfunc)
-    initial_vector = E0.data.toarray().flatten()
+    r = sp.integrate.ode(_rhs)
+    initial_vector = E0.full().flatten()
+    r.set_f_params(L.full())
     r.set_integrator('zvode', method=opt.method, order=opt.order,
                      atol=opt.atol, rtol=opt.rtol, nsteps=opt.nsteps,
                      first_step=opt.first_step, min_step=opt.min_step,
@@ -208,28 +188,19 @@ def integrate(L,E0,ti,tf,Lfunc=None,opt=qt.Options()):
     return qt.Qobj(vec2mat(r.y)).trans()
 
 
-def rhot(rho0,t,tau,H_S,L1,L2,Id,drivefunc=None,options=qt.Options()):
+def rhot(rho0,t,tau,H_S,L1,L2,Id,eps=0.0,options=qt.Options()):
     """
     Compute rho(t)
     """
     k= int(t/tau)+1
     s = t-(k-1)*tau
     rhovec = qt.operator_to_vector(rho0)
-    dim = H_S.dims[0][0]
-    # collapseop for the first system in the cascade
-    L2first = localop(L2,1,k,dim)
-    if drivefunc is not None:
-        Hdrive = lambda t: 1j*(sp.conj(drivefunc(t))*1.0*L2first
-                               -drivefunc(t)*1.0*L2first.dag())
-        Ldrive = lambda t: -1j*(qt.spre(Hdrive(t))-qt.spost(Hdrive(t)))
-    else:
-        Ldrive = None
-    G1,E0 = generator(k,H_S,L1,L2)
-    E = integrate(G1,E0,0.,s,Lfunc=Ldrive,opt=options)
+    G1,E0 = generator(k,H_S,L1,L2,eps=eps)
+    E = integrate(G1,E0,0.,s,opt=options)
     if k>1:
-        G2,null = generator(k-1,H_S,L1,L2)
+        G2,null = generator(k-1,H_S,L1,L2,eps=eps)
         G2 = qt.composite(Id,G2)
-        E = integrate(G2,E,s,tau,Lfunc=Ldrive,opt=options)
+        E = integrate(G2,E,s,tau,opt=options)
     E.dims = E0.dims
     E = TensorQobj(E)
     for l in range(k-1):
