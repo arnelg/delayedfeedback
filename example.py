@@ -52,7 +52,7 @@ def run(rho0=rho0,tau=tau,tlist=tlist):
     opts.nsteps = 1e7
     sol = np.array([rho0]*len(tlist))
     for i,t in enumerate(tlist):
-        sol[i] = cascade.rhot(rho0,t,tau,H_S,L1,L2,Id,eps=0.,options=opts)
+        sol[i] = cascade.rhot(rho0,t,tau,H_S,L1,L2,Id,options=opts)
     return tlist,sol
 
 def run_nofb(rho0=rho0,tlist=tlist):
