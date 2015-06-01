@@ -15,7 +15,7 @@ import qutip as qt
 
 # Flag to decide if we are going to use cython for fast computation of
 # tensor network generalized partial trace.
-usecython = False
+usecython = True
 if usecython:
     import tnintegrate_c
 
